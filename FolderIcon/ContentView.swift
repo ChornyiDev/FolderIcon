@@ -25,7 +25,7 @@ import UniformTypeIdentifiers
 
         // Icon Tab State
         @State private var selectedIconType: String = "Symbols"
-        @State private var selectedSymbol: String = "star.fill"
+        @State private var selectedSymbol: String = ""
         @State private var selectedEmoji: String = ""
         @State private var customImagePath: String? = nil
         @State private var customImage: NSImage? = nil
@@ -486,9 +486,7 @@ import UniformTypeIdentifiers
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(8)
                 .onChange(of: searchText) { oldValue, newValue in
-                    if IconData.SFSymbolsLibrary.allSymbols.contains(newValue) {
-                        selectedSymbol = newValue
-                    }
+                    selectedSymbol = newValue
                 }
 
                 Button(action: {
