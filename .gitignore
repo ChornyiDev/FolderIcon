@@ -1,0 +1,21 @@
+# Xcode
+#
+build/
+DerivedData/
+*.moved-aside
+*.xcuserstate
+*.xcworkspace
+!default.xcworkspace
+
+# Build output
+build_output/
+
+# macOS
+#
+.DS_Store
+*.swp
+*.lock
+
+# Assets
+*.appiconset/*.png
+!FolderIcon/Assets.xcassets/AppIcon.appiconset/icon.png
