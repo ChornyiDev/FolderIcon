@@ -7,5 +7,6 @@ struct FolderIconApp: App {
             ContentView()
         }
         .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
     }
 }

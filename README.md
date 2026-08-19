@@ -7,11 +7,13 @@
 ## 🚀 Features
 
 - **Color Customization**: Full HSB color control to tint your folders exactly how you want them.
+- **Gradient Tinting**: Blend two colors at any angle, or pick from handcrafted gradient presets.
 - **SF Symbols Integration**: Access thousands of Apple's high-quality symbols. Search by category or enter any symbol name manually.
 - **Emoji Support**: Use any emoji as a folder icon for a fun and expressive look.
 - **Custom Images**: Drag and drop your own images or brand logos (supports transparency) to create truly unique folders.
 - **Real-time Preview**: See exactly how your folder will look before applying changes.
 - **Bulk Processing**: Drag multiple folders at once to update them all in one click.
+- **Reset to Default**: Restore original folder icons at any time.
 - **Native Look & Feel**: Beautiful macOS-native UI with glassmorphism effects and support for Dark Mode.
 
 ## 🛠 Installation
@@ -32,13 +34,13 @@
    - **Color**: Adjust the slider to set the folder's hue, saturation, and brightness.
    - **Icon**: Choose between SF Symbols, Emojis, or upload a Custom image.
    - **Details**: Refine the icon size, style (Vibrant, Original, Color, Inverted), and tint opacity.
-3. **Apply**: Click the **"Colorize"** button to apply the new icon to your folders instantly.
+3. **Apply**: Click the **"Colorize"** button to apply the new icon to your folders instantly, or **Reset** to restore the default folder icons.
 
 ## 🍎 Technical Details
 
 - **Language**: Swift 5.9+
 - **Framework**: SwiftUI & AppKit
-- **Platform**: macOS 13.0+
+- **Platform**: macOS 14.0+
 
 ## 📄 License
 

@@ -1,13 +1,27 @@
 import Foundation
 
 struct IconCategory: Identifiable, Hashable {
-    let id = UUID()
+    var id: String { name }
     let name: String
     let symbols: [String]
 }
 
-struct SFSymbolsLibrary {
+enum SFSymbolsLibrary {
     static let categories: [IconCategory] = [
+        IconCategory(
+            name: "All Symbols",
+            symbols: [
+                "star", "heart", "bell", "flag", "bolt", "camera", "folder", "gearshape", "leaf",
+                "umbrella", "cloud", "sun.max", "house", "magnifyingglass", "envelope", "phone",
+                "paperplane", "archivebox", "briefcase", "calendar", "clock", "message", "video",
+                "mic", "music.note", "photo", "map", "location", "shield", "lock",
+                "lock.open", "key", "cart", "bag", "creditcard", "gift", "gamecontroller",
+                "headphones", "speaker.wave.2", "display", "laptopcomputer", "iphone",
+                "applewatch.watchface", "trash", "pencil", "link", "plus", "minus", "checkmark",
+                "xmark", "info.circle", "questionmark.circle", "exclamationmark.triangle",
+                "arrow.up", "arrow.down", "arrow.left", "arrow.right", "square.and.arrow.up",
+                "square.and.arrow.down", "pencil.tip", "lasso", "folder.badge.plus",
+            ]),
         IconCategory(
             name: "Communication",
             symbols: [
@@ -30,8 +44,7 @@ struct SFSymbolsLibrary {
                 "gearshape", "gearshape.fill", "leaf", "leaf.fill", "umbrella", "umbrella.fill",
                 "cloud", "cloud.fill", "sun.max", "sun.max.fill", "moon", "moon.fill", "trash",
                 "trash.fill", "pencil", "link", "briefcase", "archivebox", "calendar", "clock",
-                "calendar", "clock", "plus.app", "shield", "lock", "lock.fill", "lock.open",
-                "lock.open.fill", "key",
+                "plus.app", "shield", "lock", "lock.fill", "lock.open", "lock.open.fill", "key",
                 "key.fill",
             ]),
         IconCategory(
@@ -46,35 +59,17 @@ struct SFSymbolsLibrary {
             name: "Nature",
             symbols: [
                 "sun.max", "moon", "cloud", "cloud.rain", "snow", "wind", "tornado", "hurricane",
-                "bolt",
-                "thermometer.sun", "thermometer.snowflake", "drop", "flame", "tree",
-            ]),
-        IconCategory(
-            name: "All Symbols",
-            symbols: [
-                "star", "heart", "bell", "flag", "bolt", "camera", "folder", "gearshape", "leaf",
-                "umbrella", "cloud", "sun.max", "house", "magnifyingglass", "envelope", "phone",
-                "paperplane", "archivebox", "briefcase", "calendar", "clock", "message", "video",
-                "mic", "music.note", "photo", "map", "location", "shield", "lock",
-                "lock.open", "key", "cart", "bag", "creditcard", "gift", "gamecontroller",
-                "headphones", "speaker.wave.2", "display", "laptopcomputer", "iphone",
-                "applewatch.watchface", "trash", "pencil", "link", "plus", "minus", "checkmark",
-                "xmark", "info.circle", "questionmark.circle", "exclamationmark.triangle",
-                "arrow.up", "arrow.down", "arrow.left", "arrow.right", "square.and.arrow.up",
-                "square.and.arrow.down", "pencil.tip", "lasso", "folder.badge.plus",
+                "bolt", "thermometer.sun", "thermometer.snowflake", "drop", "flame", "tree",
             ]),
     ]
 
     static func symbols(for categoryName: String) -> [String] {
-        // Return unique symbols to avoid SwiftUI ID collision warnings
         let rawSymbols = categories.first { $0.name == categoryName }?.symbols ?? []
         var uniqueSymbols = [String]()
         var seen = Set<String>()
-        for symbol in rawSymbols {
-            if !seen.contains(symbol) {
-                uniqueSymbols.append(symbol)
-                seen.insert(symbol)
-            }
+        for symbol in rawSymbols where !seen.contains(symbol) {
+            uniqueSymbols.append(symbol)
+            seen.insert(symbol)
         }
         return uniqueSymbols
     }

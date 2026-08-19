@@ -6,6 +6,9 @@ DerivedData/
 *.xcuserstate
 *.xcworkspace
 !default.xcworkspace
+xcuserdata/
+*.o
+*.dSYM
 
 # Build output
 build_output/
