@@ -5,6 +5,10 @@ import UniformTypeIdentifiers
 enum FolderProcessor {
     static let canvasSize: CGFloat = 512
 
+    /// Shared Core Image context. Creating a `CIContext` is expensive, and
+    /// it is thread-safe, so one instance is reused for every render.
+    private static let ciContext = CIContext()
+
     // MARK: - Icon generation
 
     static func createCustomFolder(
@@ -19,17 +23,19 @@ enum FolderProcessor {
     ) -> NSImage? {
         renderImage(size: NSSize(width: canvasSize, height: canvasSize)) { rect in
             let folderIcon = NSWorkspace.shared.icon(for: .folder)
-            folderIcon.draw(in: rect)
 
-            // Recolor: take hue & saturation from the tint, keep the
-            // original luminance (shading, highlights, volume).
-            // Source alpha (opacity) mixes original vs. recolored look.
-            applyTint(tint, opacity: tintOpacity, in: rect)
+            // Recolor by multiplying the chosen color (or gradient) by the
+            // folder's luminance map: the hue/saturation is EXACTLY the picked
+            // color everywhere, while Apple's shading/gloss survives as
+            // brightness variation. No blue from the original bleeds through.
+            drawRecoloredFolder(tint: tint, in: rect)
 
-            // The color blend also paints into transparent areas —
-            // clip everything back to the folder silhouette.
-            folderIcon.draw(
-                in: rect, from: .zero, operation: .destinationIn, fraction: 1)
+            // Partial opacity blends the original (blue) folder back in.
+            if tintOpacity < 1 {
+                folderIcon.draw(
+                    in: rect, from: .zero, operation: .sourceOver,
+                    fraction: CGFloat(1 - tintOpacity))
+            }
 
             if let customImage {
                 drawCustomImage(
@@ -72,26 +78,72 @@ enum FolderProcessor {
         return image
     }
 
-    private static func applyTint(_ tint: FolderTint, opacity: Double, in rect: NSRect) {
+    /// Draws the folder silhouette filled with the exact chosen color/gradient,
+    /// then multiplies the folder's luminance map over it so the shading,
+    /// gloss and volume of the system folder are preserved.
+    private static func drawRecoloredFolder(tint: FolderTint, in rect: NSRect) {
+        let folderIcon = NSWorkspace.shared.icon(for: .folder)
+
+        guard
+            let base = renderImage(size: rect.size, drawing: { folderIcon.draw(in: $0) }),
+            let baseCG = base.cgImage(forProposedRect: nil, context: nil, hints: nil),
+            let gray = CGContext(
+                data: nil,
+                width: baseCG.width, height: baseCG.height,
+                bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceGray(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return }
+
+        gray.draw(
+            baseCG, in: CGRect(x: 0, y: 0, width: baseCG.width, height: baseCG.height))
+        guard let grayCG = gray.makeImage() else { return }
+
         switch tint {
         case .solid(let color):
-            blendDraw(.color) {
-                // Pure CG fill: NSRect.fill()/NSColor.setFill() ignore the
-                // CG blend mode and would paint a flat color instead.
-                if let cg = NSGraphicsContext.current?.cgContext {
-                    let alphaColor = color.withAlphaComponent(CGFloat(opacity))
-                    cg.setFillColor(alphaColor.cgColor)
-                    cg.fill(CGRect(origin: .zero, size: rect.size))
-                }
-            }
+            color.withAlphaComponent(1).setFill()
+            rect.fill()
         case .gradient(let start, let end, let angle):
             drawLinearGradient(
-                start: start.withAlphaComponent(CGFloat(opacity)),
-                end: end.withAlphaComponent(CGFloat(opacity)),
-                angle: angle,
-                blendMode: .color,
-                in: rect)
+                start: start, end: end, angle: angle, blendMode: .normal, in: rect)
         }
+
+        // Clip to the folder silhouette without the baked drop shadow
+        // (alpha >= 0.7 keeps the body, cuts the dark halo outside it).
+        if let mask = silhouetteMask(from: baseCG) {
+            NSImage(cgImage: mask, size: rect.size).draw(
+                in: rect, from: .zero, operation: .destinationIn, fraction: 1)
+        }
+
+        // Multiply the shading on top: exact color, Apple's volume preserved.
+        guard let cg = NSGraphicsContext.current?.cgContext else { return }
+        cg.saveGState()
+        cg.setBlendMode(.multiply)
+        cg.draw(grayCG, in: CGRect(origin: .zero, size: rect.size))
+        cg.restoreGState()
+    }
+
+    /// Hard silhouette of the folder body: alpha thresholded at 0.7.
+    /// The system folder artwork has a dark drop shadow baked into the alpha;
+    /// thresholding removes it so the recolored folder has clean edges.
+    private static func silhouetteMask(from cgImage: CGImage) -> CGImage? {
+        guard
+            let ctx = CGContext(
+                data: nil,
+                width: cgImage.width, height: cgImage.height,
+                bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceGray(),
+                bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue)
+        else { return nil }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        guard let alpha = ctx.makeImage() else { return nil }
+
+        let ci = CIImage(cgImage: alpha)
+        let filter = CIFilter(
+            name: "CIColorThreshold",
+            parameters: [kCIInputImageKey: ci, "inputThreshold": 0.7])
+        guard let output = filter?.outputImage else { return nil }
+        return ciContext.createCGImage(output, from: output.extent)
     }
 
     /// Linear gradient over the folder. With `.color` blend mode it
@@ -206,14 +258,24 @@ enum FolderProcessor {
     private static func drawCustomImage(
         _ image: NSImage, style: IconStyle, customColor: NSColor, in rect: NSRect, size: CGFloat
     ) {
-        let targetSize = NSSize(width: size, height: size)
-        let x = (rect.width - targetSize.width) / 2
-        let y = (rect.height - targetSize.height) / 2 - 40
-        let targetRect = NSRect(origin: CGPoint(x: x, y: y), size: targetSize)
+        // Aspect-fit the image into the square slot so non-square logos keep
+        // their proportions instead of being stretched.
+        let aspect = image.size.height > 0 ? image.size.width / image.size.height : 1
+        let fitSize = aspect >= 1
+            ? NSSize(width: size, height: size / aspect)
+            : NSSize(width: size * aspect, height: size)
+        let targetRect = NSRect(
+            x: rect.midX - fitSize.width / 2,
+            y: rect.midY - fitSize.height / 2 - 40,
+            width: fitSize.width, height: fitSize.height)
 
         switch style {
         case .color:
-            if let tinted = tint(image, with: customColor) {
+            // Render the tint at most 2x the final on-canvas size: the result
+            // is drawn at `fitSize`, so a full-resolution intermediate bitmap
+            // (e.g. a 4000px logo) is pure waste.
+            let maxDimension = max(fitSize.width, fitSize.height) * 2
+            if let tinted = tint(image, with: customColor, maxDimension: maxDimension) {
                 tinted.draw(in: targetRect)
             } else {
                 image.draw(in: targetRect)
@@ -227,8 +289,13 @@ enum FolderProcessor {
         }
     }
 
-    private static func tint(_ image: NSImage, with color: NSColor) -> NSImage? {
-        renderImage(size: image.size) { rect in
+    private static func tint(
+        _ image: NSImage, with color: NSColor, maxDimension: CGFloat
+    ) -> NSImage? {
+        let scale = min(1, maxDimension / max(image.size.width, image.size.height, 1))
+        let renderSize = NSSize(
+            width: max(1, image.size.width * scale), height: max(1, image.size.height * scale))
+        return renderImage(size: renderSize) { rect in
             image.draw(in: rect)
             fill(sourceAtop: color, in: rect)
         }
@@ -241,19 +308,36 @@ enum FolderProcessor {
         NSWorkspace.shared.setIcon(image, forFile: folderURL.path, options: [])
     }
 
+    enum ResetError: LocalizedError {
+        case cannotReadFlags
+        case cannotClearFlag
+
+        var errorDescription: String? {
+            switch self {
+            case .cannotReadFlags:
+                return "Could not read the folder flags"
+            case .cannotClearFlag:
+                return "Could not clear the custom-icon flag"
+            }
+        }
+    }
+
     /// Restores the default folder icon by removing the custom icon
     /// ("Icon\r") file and clearing the Finder custom-icon flag.
+    /// Throws if the flag cannot be read or cleared, so callers report the
+    /// failure instead of assuming the icon was restored.
     static func resetIcon(for folderURL: URL) throws {
         let iconPath = folderURL.path + "/Icon\r"
         if FileManager.default.fileExists(atPath: iconPath) {
             try FileManager.default.removeItem(atPath: iconPath)
         }
-        clearCustomIconFlag(for: folderURL)
+        try clearCustomIconFlag(for: folderURL)
     }
 
     /// Clears the `kHasCustomIcon` (0x0400) Finder flag via getattrlist/setattrlist,
-    /// leaving all other flags untouched.
-    private static func clearCustomIconFlag(for folderURL: URL) {
+    /// leaving all other flags untouched. No-ops when the flag is already
+    /// cleared; throws if the underlying syscalls fail.
+    private static func clearCustomIconFlag(for folderURL: URL) throws {
         let path = folderURL.path
 
         var query = attrlist()
@@ -262,7 +346,7 @@ enum FolderProcessor {
 
         var buffer = FlagsAttribute()
         guard getattrlist(path, &query, &buffer, MemoryLayout<FlagsAttribute>.size, 0) == 0 else {
-            return
+            throw ResetError.cannotReadFlags
         }
 
         let kHasCustomIcon: UInt32 = 0x0400
@@ -270,7 +354,9 @@ enum FolderProcessor {
         guard newFlags != buffer.flags else { return }
 
         var flags = newFlags
-        _ = setattrlist(path, &query, &flags, MemoryLayout<UInt32>.size, 0)
+        guard setattrlist(path, &query, &flags, MemoryLayout<UInt32>.size, 0) == 0 else {
+            throw ResetError.cannotClearFlag
+        }
     }
 
     private struct FlagsAttribute {

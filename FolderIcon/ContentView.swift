@@ -225,6 +225,10 @@ struct ContentView: View {
         case .history:
             HistoryTabView(state: state) { snapshot in
                 state.restore(from: snapshot)
+                // Drop the cached preview: it still shows the pre-restore render
+                // (the debounced re-render hasn't run yet), so force a fresh
+                // render in applyChanges via `previewImage ?? makeImage()`.
+                previewImage = nil
                 applyChanges(recordHistory: false)
             }
         }
