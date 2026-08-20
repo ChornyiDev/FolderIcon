@@ -4,6 +4,10 @@ import XCTest
 
 @MainActor
 final class FolderIconTests: XCTestCase {
+    func testDefaultOpacityIsOneHundredPercent() {
+        XCTAssertEqual(AppState().tintOpacity, 1.0)
+    }
+
     func testAllSymbolsGridIsCompleteAndUnique() {
         let symbols = SFSymbolsLibrary.symbols(for: "All Symbols")
 
@@ -20,6 +24,23 @@ final class FolderIconTests: XCTestCase {
 
         XCTAssertEqual(state.selectedSymbol, "sparkles")
         XCTAssertEqual(state.searchText, "sparkles")
+    }
+
+    func testZeroOpacityDoesNotRevealSystemBlueFolder() throws {
+        let image = try XCTUnwrap(
+            FolderProcessor.createCustomFolder(
+                tint: .solid(.systemGreen),
+                symbolName: "",
+                symbolSize: 160,
+                symbolColor: .black,
+                style: .original,
+                tintOpacity: 0))
+        let representation = try XCTUnwrap(image.cgImage(forProposedRect: nil, context: nil, hints: nil))
+        let bitmap = NSBitmapImageRep(cgImage: representation)
+        let center = try XCTUnwrap(
+            bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2))
+
+        XCTAssertEqual(center.alphaComponent, 0, accuracy: 0.001)
     }
 
     func testHistoryPrunesOldEntriesAndDeletesFiles() async throws {

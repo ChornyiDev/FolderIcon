@@ -88,7 +88,6 @@ struct ContentView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: 240, maxHeight: 240)
-                    .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
             }
 
             Spacer(minLength: 12)

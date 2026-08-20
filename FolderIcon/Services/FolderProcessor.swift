@@ -16,24 +16,22 @@ enum FolderProcessor {
         symbolSize: CGFloat,
         symbolColor: NSColor,
         style: IconStyle,
-        tintOpacity: Double = 0.5,
+        tintOpacity: Double = 1.0,
         isEmoji: Bool = false,
         customImage: NSImage? = nil
     ) -> NSImage? {
         renderImage(size: NSSize(width: canvasSize, height: canvasSize)) { rect in
-            let folderIcon = NSWorkspace.shared.icon(for: .folder)
-
-            // Recolor by multiplying the chosen color (or gradient) by the
-            // folder's luminance map: the hue/saturation is EXACTLY the picked
-            // color everywhere, while Apple's shading/gloss survives as
-            // brightness variation. No blue from the original bleeds through.
-            drawRecoloredFolder(tint: tint, in: rect)
-
-            // Partial opacity blends the original (blue) folder back in.
-            if tintOpacity < 1 {
-                folderIcon.draw(
-                    in: rect, from: .zero, operation: .sourceOver,
-                    fraction: CGFloat(1 - tintOpacity))
+            // Render the recolored folder as an isolated layer, then apply
+            // opacity to that layer. This keeps the system blue artwork from
+            // bleeding back in at low opacity and makes 0% fully transparent.
+            let opacity = CGFloat(max(0, min(1, tintOpacity)))
+            if opacity > 0,
+                let folderLayer = renderImage(size: rect.size, drawing: {
+                    drawRecoloredFolder(tint: tint, in: $0)
+                })
+            {
+                folderLayer.draw(
+                    in: rect, from: .zero, operation: .sourceOver, fraction: opacity)
             }
 
             if let customImage {
