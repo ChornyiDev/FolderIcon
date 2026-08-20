@@ -276,6 +276,7 @@ struct ContentView: View {
                 symbolColor: state.iconColor.nsColor,
                 style: state.iconStyle,
                 tintOpacity: state.tintOpacity,
+                iconOffset: CGSize(width: state.iconOffsetX, height: state.iconOffsetY),
                 customImage: image)
         }
 
@@ -287,6 +288,7 @@ struct ContentView: View {
             symbolColor: state.iconColor.nsColor,
             style: state.iconStyle,
             tintOpacity: state.tintOpacity,
+            iconOffset: CGSize(width: state.iconOffsetX, height: state.iconOffsetY),
             isEmoji: state.selectedIconType == .emojis && !state.selectedEmoji.isEmpty)
     }
 

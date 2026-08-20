@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import XCTest
 @testable import FolderIcon
 
@@ -8,8 +9,13 @@ final class FolderIconTests: XCTestCase {
         XCTAssertEqual(AppState().tintOpacity, 1.0)
     }
 
+    func testEmojiInputIsLimitedToFourCharacters() {
+        XCTAssertEqual(IconTabView.limitedEmojiInput("ABCDE"), "ABCD")
+        XCTAssertEqual(IconTabView.limitedEmojiInput("🚀⭐️🔥💡✅"), "🚀⭐️🔥💡")
+    }
+
     func testAllSymbolsGridIsCompleteAndUnique() {
-        let symbols = SFSymbolsLibrary.symbols(for: "All Symbols")
+        let symbols = SFSymbolsLibrary.symbols(for: "All")
 
         XCTAssertEqual(symbols.count, 64)
         XCTAssertEqual(Set(symbols).count, symbols.count)
@@ -24,6 +30,20 @@ final class FolderIconTests: XCTestCase {
 
         XCTAssertEqual(state.selectedSymbol, "sparkles")
         XCTAssertEqual(state.searchText, "sparkles")
+    }
+
+    func testIconPositionTriggersPreviewAndRestoresFromHistory() {
+        let state = AppState()
+        let initialConfiguration = state.renderConfiguration
+        state.iconOffsetX = 36
+        state.iconOffsetY = -24
+        XCTAssertNotEqual(state.renderConfiguration, initialConfiguration)
+
+        let snapshot = IconSnapshot(state: state)
+        let restoredState = AppState()
+        restoredState.restore(from: snapshot)
+        XCTAssertEqual(restoredState.iconOffsetX, 36)
+        XCTAssertEqual(restoredState.iconOffsetY, -24)
     }
 
     func testZeroOpacityDoesNotRevealSystemBlueFolder() throws {
@@ -41,6 +61,59 @@ final class FolderIconTests: XCTestCase {
             bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2))
 
         XCTAssertEqual(center.alphaComponent, 0, accuracy: 0.001)
+    }
+
+    func testCustomImageLoaderAcceptsPNGFile() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let imageURL = directory.appendingPathComponent("custom-icon.png")
+        try XCTUnwrap(makeImage().pngData).write(to: imageURL)
+
+        let image = try XCTUnwrap(IconTabView.loadThumbnail(from: imageURL))
+        XCTAssertGreaterThan(image.width, 0)
+        XCTAssertEqual(image.width, image.height)
+    }
+
+    func testCustomImageLoaderAcceptsSVGFile() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let imageURL = directory.appendingPathComponent("custom-icon.svg")
+        let svg = """
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="16" viewBox="0 0 32 16">
+              <rect width="32" height="16" rx="2" fill="#00AA66"/>
+            </svg>
+            """
+        try Data(svg.utf8).write(to: imageURL)
+
+        let loadedImage = await IconTabView.loadCustomImage(from: imageURL)
+        let image = try XCTUnwrap(loadedImage)
+        XCTAssertGreaterThanOrEqual(max(image.width, image.height), 1024)
+        XCTAssertGreaterThan(image.height, 0)
+        let bitmap = NSBitmapImageRep(cgImage: image)
+        let center = try XCTUnwrap(
+            bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2))
+        XCTAssertGreaterThan(center.greenComponent, 0.4)
+        XCTAssertLessThan(center.redComponent, 0.2)
+    }
+
+    func testCustomImageLoaderAcceptsDroppedSVGData() async throws {
+        let svg = """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <path fill="#00AA66" d="M0 0h24v24H0z"/>
+            </svg>
+            """
+
+        let loadedImage = await IconTabView.loadCustomImage(
+            from: Data(svg.utf8), typeIdentifier: UTType.svg.identifier)
+        let image = try XCTUnwrap(loadedImage)
+
+        XCTAssertGreaterThanOrEqual(max(image.width, image.height), 1024)
     }
 
     func testHistoryPrunesOldEntriesAndDeletesFiles() async throws {

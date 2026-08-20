@@ -9,7 +9,7 @@ struct IconCategory: Identifiable, Hashable {
 enum SFSymbolsLibrary {
     static let categories: [IconCategory] = [
         IconCategory(
-            name: "All Symbols",
+            name: "All",
             symbols: [
                 "star", "heart", "bell", "flag", "bolt", "camera", "folder", "gearshape", "leaf",
                 "umbrella", "cloud", "sun.max", "house", "magnifyingglass", "envelope", "phone",

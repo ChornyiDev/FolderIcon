@@ -5,7 +5,7 @@ import SwiftUI
 enum ContentTab: String, CaseIterable {
     case color = "Color"
     case icon = "Icon"
-    case details = "Details"
+    case details = "Style"
     case history = "History"
 }
 
@@ -109,6 +109,8 @@ struct RenderConfiguration: Equatable {
     var symbolSize: CGFloat
     var iconStyle: IconStyle
     var iconColor: HSBColor
+    var iconOffsetX: CGFloat
+    var iconOffsetY: CGFloat
     var customImageID: ObjectIdentifier?
     var folderCount: Int
 
@@ -125,6 +127,8 @@ struct RenderConfiguration: Equatable {
         symbolSize = state.symbolSize
         iconStyle = state.iconStyle
         iconColor = state.iconColor
+        iconOffsetX = state.iconOffsetX
+        iconOffsetY = state.iconOffsetY
         customImageID = state.customImage.map(ObjectIdentifier.init)
         folderCount = state.folderURLs.count
     }
@@ -146,6 +150,8 @@ struct IconSnapshot: Codable, Sendable {
     var symbolSize: Double
     var iconStyle: IconStyle
     var iconColor: HSBColor
+    var iconOffsetX: Double?
+    var iconOffsetY: Double?
     var customImageData: Data?
 
     init(state: AppState) {
@@ -161,6 +167,8 @@ struct IconSnapshot: Codable, Sendable {
         symbolSize = Double(state.symbolSize)
         iconStyle = state.iconStyle
         iconColor = state.iconColor
+        iconOffsetX = Double(state.iconOffsetX)
+        iconOffsetY = Double(state.iconOffsetY)
         customImageData = state.customImage?.pngData(maxPixelSize: 1024)
     }
 }
@@ -186,12 +194,14 @@ final class AppState {
     var selectedEmoji: String = ""
     var customImage: NSImage?
     var searchText: String = ""
-    var selectedCategory: String = "All Symbols"
+    var selectedCategory: String = "All"
 
     // Details tab
     var symbolSize: CGFloat = 160
     var iconStyle: IconStyle = .vibrant
     var iconColor = HSBColor(hue: 0.5, saturation: 0.7, brightness: 0.8)
+    var iconOffsetX: CGFloat = 0
+    var iconOffsetY: CGFloat = 0
     var tintOpacity: Double = 1.0
 
     var renderConfiguration: RenderConfiguration {
@@ -216,6 +226,8 @@ final class AppState {
         symbolSize = CGFloat(snapshot.symbolSize)
         iconStyle = snapshot.iconStyle
         iconColor = snapshot.iconColor
+        iconOffsetX = CGFloat(snapshot.iconOffsetX ?? 0)
+        iconOffsetY = CGFloat(snapshot.iconOffsetY ?? 0)
         if let data = snapshot.customImageData {
             customImage = NSImage(data: data)
         } else {

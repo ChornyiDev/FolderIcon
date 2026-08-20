@@ -17,6 +17,7 @@ enum FolderProcessor {
         symbolColor: NSColor,
         style: IconStyle,
         tintOpacity: Double = 1.0,
+        iconOffset: CGSize = .zero,
         isEmoji: Bool = false,
         customImage: NSImage? = nil
     ) -> NSImage? {
@@ -36,14 +37,16 @@ enum FolderProcessor {
 
             if let customImage {
                 drawCustomImage(
-                    customImage, style: style, customColor: symbolColor, in: rect,
-                    size: symbolSize)
+                    customImage, folderColor: tint.referenceColor, style: style, customColor: symbolColor, in: rect,
+                    size: symbolSize, offset: iconOffset)
             } else if isEmoji {
-                drawEmoji(symbolName, in: rect, size: symbolSize)
+                drawEmoji(
+                    symbolName, folderColor: tint.referenceColor, customSymbolColor: symbolColor,
+                    style: style, in: rect, size: symbolSize, offset: iconOffset)
             } else {
                 drawSymbol(
                     symbolName, folderColor: tint.referenceColor, customSymbolColor: symbolColor,
-                    style: style, in: rect, size: symbolSize)
+                    style: style, in: rect, size: symbolSize, offset: iconOffset)
             }
         }
     }
@@ -66,7 +69,12 @@ enum FolderProcessor {
         rep.size = size
 
         NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        let context = NSGraphicsContext(bitmapImageRep: rep)
+        context?.imageInterpolation = .high
+        context?.shouldAntialias = true
+        context?.cgContext.setAllowsAntialiasing(true)
+        context?.cgContext.setShouldAntialias(true)
+        NSGraphicsContext.current = context
         drawing(NSRect(origin: .zero, size: size))
         NSGraphicsContext.restoreGraphicsState()
 
@@ -194,29 +202,12 @@ enum FolderProcessor {
 
     private static func drawSymbol(
         _ name: String, folderColor: NSColor, customSymbolColor: NSColor, style: IconStyle,
-        in rect: NSRect, size: CGFloat
+        in rect: NSRect, size: CGFloat, offset: CGSize
     ) {
         guard !name.isEmpty else { return }
 
-        let finalColor: NSColor
-        switch style {
-        case .vibrant:
-            finalColor = NSColor(white: 0.1, alpha: 0.3)
-        case .original:
-            finalColor = .black
-        case .color:
-            finalColor = customSymbolColor
-        case .inverted:
-            if let rgbFolder = folderColor.usingColorSpace(.sRGB) {
-                finalColor = NSColor(
-                    red: 1.0 - rgbFolder.redComponent,
-                    green: 1.0 - rgbFolder.greenComponent,
-                    blue: 1.0 - rgbFolder.blueComponent,
-                    alpha: 1.0)
-            } else {
-                finalColor = .white
-            }
-        }
+        let finalColor = resolvedIconColor(
+            folderColor: folderColor, customSymbolColor: customSymbolColor, style: style)
 
         let config = NSImage.SymbolConfiguration(pointSize: size, weight: .bold)
             .applying(NSImage.SymbolConfiguration(hierarchicalColor: finalColor))
@@ -226,8 +217,8 @@ enum FolderProcessor {
                 .withSymbolConfiguration(config)
         else { return }
 
-        let x = (rect.width - symbolImage.size.width) / 2
-        let y = (rect.height - symbolImage.size.height) / 2 - 40
+        let x = (rect.width - symbolImage.size.width) / 2 + offset.width
+        let y = (rect.height - symbolImage.size.height) / 2 - 40 + offset.height
         let symbolRect = NSRect(origin: CGPoint(x: x, y: y), size: symbolImage.size)
 
         if style == .vibrant {
@@ -239,21 +230,30 @@ enum FolderProcessor {
         }
     }
 
-    private static func drawEmoji(_ emoji: String, in rect: NSRect, size: CGFloat) {
+    private static func drawEmoji(
+        _ emoji: String, folderColor: NSColor, customSymbolColor: NSColor, style: IconStyle,
+        in rect: NSRect, size: CGFloat, offset: CGSize
+    ) {
         guard !emoji.isEmpty else { return }
 
         let font = NSFont.systemFont(ofSize: size)
-        let string = NSAttributedString(string: emoji, attributes: [.font: font])
+        var attributes: [NSAttributedString.Key: Any] = [.font: font]
+        if !containsEmoji(emoji) {
+            attributes[.foregroundColor] = resolvedIconColor(
+                folderColor: folderColor, customSymbolColor: customSymbolColor, style: style)
+        }
+        let string = NSAttributedString(string: emoji, attributes: attributes)
         let stringSize = string.size()
 
-        let x = (rect.width - stringSize.width) / 2
-        let y = (rect.height - stringSize.height) / 2 - 40
+        let x = (rect.width - stringSize.width) / 2 + offset.width
+        let y = (rect.height - stringSize.height) / 2 - 40 + offset.height
 
         string.draw(in: NSRect(origin: CGPoint(x: x, y: y), size: stringSize))
     }
 
     private static func drawCustomImage(
-        _ image: NSImage, style: IconStyle, customColor: NSColor, in rect: NSRect, size: CGFloat
+        _ image: NSImage, folderColor: NSColor, style: IconStyle, customColor: NSColor, in rect: NSRect, size: CGFloat,
+        offset: CGSize
     ) {
         // Aspect-fit the image into the square slot so non-square logos keep
         // their proportions instead of being stretched.
@@ -262,17 +262,19 @@ enum FolderProcessor {
             ? NSSize(width: size, height: size / aspect)
             : NSSize(width: size * aspect, height: size)
         let targetRect = NSRect(
-            x: rect.midX - fitSize.width / 2,
-            y: rect.midY - fitSize.height / 2 - 40,
+            x: rect.midX - fitSize.width / 2 + offset.width,
+            y: rect.midY - fitSize.height / 2 - 40 + offset.height,
             width: fitSize.width, height: fitSize.height)
 
         switch style {
-        case .color:
-            // Render the tint at most 2x the final on-canvas size: the result
-            // is drawn at `fitSize`, so a full-resolution intermediate bitmap
-            // (e.g. a 4000px logo) is pure waste.
-            let maxDimension = max(fitSize.width, fitSize.height) * 2
-            if let tinted = tint(image, with: customColor, maxDimension: maxDimension) {
+        case .color, .inverted:
+            // Keep enough source resolution for vector-derived images. SVGs
+            // arrive as a 1024 px raster; shrinking that mask before tinting
+            // makes diagonal and curved edges visibly pixelated.
+            let maxDimension = max(1024, max(fitSize.width, fitSize.height) * 2)
+            let tintColor = resolvedIconColor(
+                folderColor: folderColor, customSymbolColor: customColor, style: style)
+            if let tinted = tint(image, with: tintColor, maxDimension: maxDimension) {
                 tinted.draw(in: targetRect)
             } else {
                 image.draw(in: targetRect)
@@ -281,8 +283,35 @@ enum FolderProcessor {
             blendDraw(.multiply) {
                 image.draw(in: targetRect, from: .zero, operation: .sourceOver, fraction: 0.4)
             }
-        case .original, .inverted:
+        case .original:
             image.draw(in: targetRect)
+        }
+    }
+
+    private static func resolvedIconColor(
+        folderColor: NSColor, customSymbolColor: NSColor, style: IconStyle
+    ) -> NSColor {
+        switch style {
+        case .vibrant:
+            return NSColor(white: 0.1, alpha: 0.3)
+        case .original:
+            return .black
+        case .color:
+            return customSymbolColor
+        case .inverted:
+            guard let rgbFolder = folderColor.usingColorSpace(.sRGB) else { return .white }
+            return NSColor(
+                red: 1.0 - rgbFolder.redComponent,
+                green: 1.0 - rgbFolder.greenComponent,
+                blue: 1.0 - rgbFolder.blueComponent,
+                alpha: 1.0)
+        }
+    }
+
+    private static func containsEmoji(_ value: String) -> Bool {
+        value.unicodeScalars.contains {
+            $0.properties.isEmojiPresentation
+                || ($0.properties.isEmoji && $0.value > 0x238C)
         }
     }
 
