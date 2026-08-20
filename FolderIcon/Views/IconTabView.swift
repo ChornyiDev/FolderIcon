@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -120,9 +121,19 @@ struct IconTabView: View {
     }
 
     private var filteredSymbols: [String] {
-        SFSymbolsLibrary.symbols(for: state.selectedCategory).filter {
-            state.searchText.isEmpty || $0.lowercased().contains(state.searchText.lowercased())
+        let query = normalizedSymbolInput.lowercased()
+        return SFSymbolsLibrary.symbols(for: state.selectedCategory).filter {
+            query.isEmpty || $0.lowercased().contains(query)
         }
+    }
+
+    private var normalizedSymbolInput: String {
+        state.searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasInvalidSymbolInput: Bool {
+        !normalizedSymbolInput.isEmpty
+            && NSImage(systemSymbolName: normalizedSymbolInput, accessibilityDescription: nil) == nil
     }
 
     private var searchBarView: some View {
@@ -130,14 +141,17 @@ struct IconTabView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.gray)
-                TextField("Search or enter name", text: $state.searchText)
+                TextField("Search or paste an SF Symbol name", text: $state.searchText)
                     .textFieldStyle(.plain)
             }
             .padding(8)
             .background(Color.gray.opacity(0.1))
             .cornerRadius(8)
             .onChange(of: state.searchText) { _, newValue in
-                state.selectedSymbol = newValue
+                let name = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                state.selectedSymbol =
+                    NSImage(systemSymbolName: name, accessibilityDescription: nil) == nil
+                    ? "" : name
             }
 
             Button(action: {
@@ -158,17 +172,22 @@ struct IconTabView: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: { state.selectedSymbol = "" }) {
+            Button(action: {
+                state.searchText = ""
+                state.selectedSymbol = ""
+            }) {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(state.selectedSymbol.isEmpty ? .gray.opacity(0.4) : .red)
+                    .foregroundColor(
+                        state.searchText.isEmpty && state.selectedSymbol.isEmpty
+                            ? .gray.opacity(0.4) : .red)
                     .padding(8)
                     .background(Color.red.opacity(0.1))
                     .cornerRadius(8)
                     .help("Clear current symbol")
             }
             .buttonStyle(.plain)
-            .disabled(state.selectedSymbol.isEmpty)
+            .disabled(state.searchText.isEmpty && state.selectedSymbol.isEmpty)
         }
     }
 
@@ -207,12 +226,24 @@ struct IconTabView: View {
                 VStack(spacing: 12) {
                     searchBarView
 
+                    if hasInvalidSymbolInput {
+                        Label("This SF Symbol name is not available on this Mac", systemImage: "exclamationmark.triangle.fill")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    symbolInfoCard
+
                     ScrollView {
                         LazyVGrid(
                             columns: Array(repeating: GridItem(.flexible()), count: 8), spacing: 12
                         ) {
                             ForEach(filteredSymbols, id: \.self) { sym in
-                                Button(action: { state.selectedSymbol = sym }) {
+                                Button(action: {
+                                    state.searchText = sym
+                                    state.selectedSymbol = sym
+                                }) {
                                     Image(systemName: sym)
                                         .font(.system(size: 18))
                                         .frame(width: 40, height: 40)
@@ -234,18 +265,68 @@ struct IconTabView: View {
         }
     }
 
+    private var symbolInfoCard: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "info.circle.fill")
+                .foregroundColor(.blue)
+                .font(.system(size: 15))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Use any SF Symbol")
+                    .font(.system(size: 11, weight: .semibold))
+
+                Text("Click the grid button to open SF Symbols, copy any symbol name, and paste it here. The icon updates automatically. Example: folder.badge.plus")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(Color.blue.opacity(0.08))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.blue.opacity(0.16), lineWidth: 1)
+        )
+    }
+
     private var categorySubtitle: String {
-        "\(filteredSymbols.count) symbols"
+        if !normalizedSymbolInput.isEmpty, !hasInvalidSymbolInput, filteredSymbols.isEmpty {
+            return "Custom symbol"
+        }
+        return "\(filteredSymbols.count) symbols"
     }
 
     private func handleImageDrop(providers: [NSItemProvider]) -> Bool {
         guard let provider = providers.first else { return false }
         _ = provider.loadObject(ofClass: URL.self) { url, _ in
-            guard let url, let img = NSImage(contentsOf: url) else { return }
+            guard let url else { return }
+            let didStart = url.startAccessingSecurityScopedResource()
+            defer {
+                if didStart {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            guard let cgImage = Self.loadThumbnail(from: url) else { return }
             DispatchQueue.main.async {
-                state.customImage = img
+                state.customImage = NSImage(
+                    cgImage: cgImage,
+                    size: NSSize(width: cgImage.width, height: cgImage.height))
             }
         }
         return true
+    }
+
+    nonisolated private static func loadThumbnail(from url: URL) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: 2048,
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }

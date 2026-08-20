@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		0E31FC212F2B8F6200B0E4AA /* FolderIcon.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FolderIcon.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E31FD012F2B8F6200B0E4AA /* FolderIconTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FolderIconTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +17,32 @@
 			path = FolderIcon;
 			sourceTree = "<group>";
 		};
+		0E31FD022F2B8F6200B0E4AA /* FolderIconTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = FolderIconTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXContainerItemProxy section */
+		0E31FD072F2B8F6200B0E4AA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0E31FC192F2B8F6200B0E4AA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0E31FC202F2B8F6200B0E4AA;
+			remoteInfo = FolderIcon;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		0E31FC1E2F2B8F6200B0E4AA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0E31FD042F2B8F6200B0E4AA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				0E31FC232F2B8F6200B0E4AA /* FolderIcon */,
+				0E31FD022F2B8F6200B0E4AA /* FolderIconTests */,
 				0E31FC222F2B8F6200B0E4AA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				0E31FC212F2B8F6200B0E4AA /* FolderIcon.app */,
+				0E31FD012F2B8F6200B0E4AA /* FolderIconTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +95,29 @@
 			productReference = 0E31FC212F2B8F6200B0E4AA /* FolderIcon.app */;
 			productType = "com.apple.product-type.application";
 		};
+		0E31FD082F2B8F6200B0E4AA /* FolderIconTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0E31FD0B2F2B8F6200B0E4AA /* Build configuration list for PBXNativeTarget "FolderIconTests" */;
+			buildPhases = (
+				0E31FD032F2B8F6200B0E4AA /* Sources */,
+				0E31FD042F2B8F6200B0E4AA /* Frameworks */,
+				0E31FD052F2B8F6200B0E4AA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0E31FD092F2B8F6200B0E4AA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				0E31FD022F2B8F6200B0E4AA /* FolderIconTests */,
+			);
+			name = FolderIconTests;
+			packageProductDependencies = (
+			);
+			productName = FolderIconTests;
+			productReference = 0E31FD012F2B8F6200B0E4AA /* FolderIconTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +130,10 @@
 				TargetAttributes = {
 					0E31FC202F2B8F6200B0E4AA = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					0E31FD082F2B8F6200B0E4AA = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 0E31FC202F2B8F6200B0E4AA;
 					};
 				};
 			};
@@ -100,12 +152,20 @@
 			projectRoot = "";
 			targets = (
 				0E31FC202F2B8F6200B0E4AA /* FolderIcon */,
+				0E31FD082F2B8F6200B0E4AA /* FolderIconTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		0E31FC1F2F2B8F6200B0E4AA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0E31FD052F2B8F6200B0E4AA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +182,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		0E31FD032F2B8F6200B0E4AA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0E31FD092F2B8F6200B0E4AA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0E31FC202F2B8F6200B0E4AA /* FolderIcon */;
+			targetProxy = 0E31FD072F2B8F6200B0E4AA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0E31FC2A2F2B8F6300B0E4AA /* Debug */ = {
@@ -252,7 +327,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -282,7 +357,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
@@ -298,6 +373,38 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		0E31FD0A2F2B8F6200B0E4AA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Q4U9WFFW5T;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = chdev.FolderIconTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FolderIcon.app/Contents/MacOS/FolderIcon";
+			};
+			name = Debug;
+		};
+		0E31FD0C2F2B8F6200B0E4AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Q4U9WFFW5T;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = chdev.FolderIconTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FolderIcon.app/Contents/MacOS/FolderIcon";
 			};
 			name = Release;
 		};
@@ -318,6 +425,15 @@
 			buildConfigurations = (
 				0E31FC2D2F2B8F6300B0E4AA /* Debug */,
 				0E31FC2E2F2B8F6300B0E4AA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0E31FD0B2F2B8F6200B0E4AA /* Build configuration list for PBXNativeTarget "FolderIconTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E31FD0A2F2B8F6200B0E4AA /* Debug */,
+				0E31FD0C2F2B8F6200B0E4AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

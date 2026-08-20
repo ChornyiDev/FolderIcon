@@ -8,9 +8,11 @@ struct DetailsTabView: View {
             VStack(alignment: .leading, spacing: 14) {
                 SectionCard(title: "Preview") {
                     IconPreviewSection(
-                        isEmoji: state.selectedIconType == .emojis,
+                        iconType: state.selectedIconType,
                         selectedEmoji: state.selectedEmoji,
                         selectedSymbol: state.selectedSymbol,
+                        customImage: state.customImage,
+                        style: state.iconStyle,
                         previewColor: previewIconColor)
                         .frame(maxWidth: .infinity)
                 }
@@ -53,15 +55,32 @@ struct DetailsTabView: View {
         case .color:
             return state.iconColor.color
         case .inverted:
-            return Color.white
+            let referenceColor: NSColor
+            switch state.tintMode {
+            case .solid:
+                referenceColor = state.folderColor.nsColor
+            case .gradient:
+                referenceColor = FolderTint.gradient(
+                    start: state.gradientStart.nsColor,
+                    end: state.gradientEnd.nsColor,
+                    angle: state.gradientAngle
+                ).referenceColor
+            }
+            guard let rgb = referenceColor.usingColorSpace(.sRGB) else { return .white }
+            return Color(
+                red: 1 - rgb.redComponent,
+                green: 1 - rgb.greenComponent,
+                blue: 1 - rgb.blueComponent)
         }
     }
 }
 
 struct IconPreviewSection: View {
-    let isEmoji: Bool
+    let iconType: IconType
     let selectedEmoji: String
     let selectedSymbol: String
+    let customImage: NSImage?
+    let style: IconStyle
     let previewColor: Color
 
     var body: some View {
@@ -71,12 +90,27 @@ struct IconPreviewSection: View {
                 .foregroundColor(.gray.opacity(0.5))
                 .frame(width: 80, height: 80)
 
-            if isEmoji && !selectedEmoji.isEmpty {
-                Text(selectedEmoji).font(.system(size: 40))
-            } else if !selectedSymbol.isEmpty {
-                Image(systemName: selectedSymbol)
-                    .font(.system(size: 40))
-                    .foregroundColor(previewColor)
+            switch iconType {
+            case .emojis:
+                if !selectedEmoji.isEmpty {
+                    Text(selectedEmoji).font(.system(size: 40))
+                }
+            case .symbols:
+                if !selectedSymbol.isEmpty {
+                    Image(systemName: selectedSymbol)
+                        .font(.system(size: 40))
+                        .foregroundColor(previewColor)
+                }
+            case .custom:
+                if let customImage {
+                    Image(nsImage: customImage)
+                        .resizable()
+                        .renderingMode(style == .color ? .template : .original)
+                        .foregroundStyle(previewColor)
+                        .opacity(style == .vibrant ? 0.4 : 1)
+                        .scaledToFit()
+                        .frame(width: 56, height: 56)
+                }
             }
         }
     }

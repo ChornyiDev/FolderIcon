@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var statusIsError = false
     @State private var statusDismissTask: Task<Void, Never>?
     @State private var isDropTargeted = false
+    @State private var isProcessing = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -125,7 +126,9 @@ struct ContentView: View {
 
     private var footerButtons: some View {
         HStack(spacing: 10) {
-            Button(action: resetIcons) {
+            Button(action: {
+                Task { await resetIcons() }
+            }) {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.system(size: 14, weight: .bold))
                     .frame(width: 44, height: 44)
@@ -134,9 +137,12 @@ struct ContentView: View {
                     .cornerRadius(12)
             }
             .buttonStyle(.plain)
+            .disabled(isProcessing)
             .help("Restore default folder icons")
 
-            Button(action: { applyChanges() }) {
+            Button(action: {
+                Task { await applyChanges() }
+            }) {
                 HStack {
                     Image(
                         systemName: state.folderURLs.isEmpty
@@ -151,6 +157,8 @@ struct ContentView: View {
                 .cornerRadius(12)
             }
             .buttonStyle(.plain)
+            .disabled(isProcessing)
+            .opacity(isProcessing ? 0.65 : 1)
         }
     }
 
@@ -229,7 +237,7 @@ struct ContentView: View {
                 // (the debounced re-render hasn't run yet), so force a fresh
                 // render in applyChanges via `previewImage ?? makeImage()`.
                 previewImage = nil
-                applyChanges(recordHistory: false)
+                Task { await applyChanges(recordHistory: false) }
             }
         }
     }
@@ -285,14 +293,36 @@ struct ContentView: View {
 
     // MARK: - Actions
 
-    private func applyChanges(recordHistory: Bool = true) {
-        guard let image = previewImage ?? makeImage() else { return }
-        let results = state.folderURLs.map { FolderProcessor.applyIcon(image, to: $0) }
+    private func applyChanges(recordHistory: Bool = true) async {
+        guard !isProcessing else { return }
+        guard let image = previewImage ?? makeImage(), let imageData = image.pngData else {
+            showStatus("Could not render the folder icon", error: true)
+            return
+        }
+
+        isProcessing = true
+        defer { isProcessing = false }
+
+        let folderURLs = state.folderURLs
+        let snapshot = recordHistory ? IconSnapshot(state: state) : nil
+        let results = await Task.detached(priority: .userInitiated) {
+            FolderProcessor.applyIcon(imageData, to: folderURLs)
+        }.value
         let failed = results.filter { !$0 }.count
         let applied = results.count - failed
 
-        if applied > 0 && recordHistory {
-            state.history.add(image: image, snapshot: IconSnapshot(state: state))
+        var historySaved = true
+        if applied > 0, let snapshot {
+            historySaved = await state.history.add(image: image, snapshot: snapshot)
+        }
+
+        if applied > 0 && !historySaved {
+            showStatus(
+                applied == 1
+                    ? "Folder updated; history was not saved"
+                    : "\(applied) updated; history was not saved",
+                error: true)
+            return
         }
 
         switch (applied, failed) {
@@ -306,17 +336,24 @@ struct ContentView: View {
         }
     }
 
-    private func resetIcons() {
-        var applied = 0
-        var failed = 0
-        for url in state.folderURLs {
-            do {
-                try FolderProcessor.resetIcon(for: url)
-                applied += 1
-            } catch {
-                failed += 1
+    private func resetIcons() async {
+        guard !isProcessing else { return }
+        isProcessing = true
+        defer { isProcessing = false }
+
+        let folderURLs = state.folderURLs
+        let results = await Task.detached(priority: .userInitiated) {
+            folderURLs.map { url in
+                do {
+                    try FolderProcessor.resetIcon(for: url)
+                    return true
+                } catch {
+                    return false
+                }
             }
-        }
+        }.value
+        let applied = results.filter { $0 }.count
+        let failed = results.count - applied
 
         switch (applied, failed) {
         case (0, _):

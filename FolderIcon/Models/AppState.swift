@@ -9,20 +9,20 @@ enum ContentTab: String, CaseIterable {
     case history = "History"
 }
 
-enum IconType: String, CaseIterable, Codable {
+enum IconType: String, CaseIterable, Codable, Sendable {
     case symbols = "Symbols"
     case emojis = "Emojis"
     case custom = "Custom"
 }
 
-enum IconStyle: String, CaseIterable, Codable {
+enum IconStyle: String, CaseIterable, Codable, Sendable {
     case vibrant = "Vibrant"
     case original = "Original"
     case color = "Color"
     case inverted = "Inverted"
 }
 
-enum TintMode: String, CaseIterable, Codable {
+enum TintMode: String, CaseIterable, Codable, Sendable {
     case solid = "Solid"
     case gradient = "Gradient"
 }
@@ -56,7 +56,7 @@ enum FolderTint {
     }
 }
 
-struct HSBColor: Equatable, Codable {
+struct HSBColor: Equatable, Codable, Sendable {
     var hue: Double
     var saturation: Double
     var brightness: Double
@@ -133,7 +133,7 @@ struct RenderConfiguration: Equatable {
 /// Serializable snapshot of every setting that produced an applied icon.
 /// Persisted alongside each history image so a history entry can be
 /// re-applied (restore settings + colorize) later.
-struct IconSnapshot: Codable {
+struct IconSnapshot: Codable, Sendable {
     var tintMode: TintMode
     var folderColor: HSBColor
     var gradientStart: HSBColor
@@ -161,7 +161,7 @@ struct IconSnapshot: Codable {
         symbolSize = Double(state.symbolSize)
         iconStyle = state.iconStyle
         iconColor = state.iconColor
-        customImageData = state.customImage?.pngData
+        customImageData = state.customImage?.pngData(maxPixelSize: 1024)
     }
 }
 
@@ -211,6 +211,7 @@ final class AppState {
         tintOpacity = snapshot.tintOpacity
         selectedIconType = snapshot.iconType
         selectedSymbol = snapshot.symbolName
+        searchText = snapshot.iconType == .symbols ? snapshot.symbolName : ""
         selectedEmoji = snapshot.emoji
         symbolSize = CGFloat(snapshot.symbolSize)
         iconStyle = snapshot.iconStyle
@@ -231,5 +232,24 @@ extension NSImage {
             let rep = NSBitmapImageRep(data: tiff)
         else { return nil }
         return rep.representation(using: .png, properties: [:])
+    }
+
+    func pngData(maxPixelSize: CGFloat) -> Data? {
+        let largestDimension = max(size.width, size.height)
+        guard largestDimension > maxPixelSize else { return pngData }
+
+        let scale = maxPixelSize / largestDimension
+        let targetSize = NSSize(
+            width: max(1, size.width * scale),
+            height: max(1, size.height * scale))
+        let resized = NSImage(size: targetSize)
+        resized.lockFocus()
+        draw(
+            in: NSRect(origin: .zero, size: targetSize),
+            from: NSRect(origin: .zero, size: size),
+            operation: .copy,
+            fraction: 1)
+        resized.unlockFocus()
+        return resized.pngData
     }
 }

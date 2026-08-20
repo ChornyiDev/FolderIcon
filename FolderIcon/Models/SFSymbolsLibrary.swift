@@ -21,6 +21,7 @@ enum SFSymbolsLibrary {
                 "xmark", "info.circle", "questionmark.circle", "exclamationmark.triangle",
                 "arrow.up", "arrow.down", "arrow.left", "arrow.right", "square.and.arrow.up",
                 "square.and.arrow.down", "pencil.tip", "lasso", "folder.badge.plus",
+                "square.grid.2x2", "circle.grid.2x2",
             ]),
         IconCategory(
             name: "Communication",

@@ -21,7 +21,10 @@ build_output/
 
 # Assets
 *.appiconset/*.png
-!FolderIcon/Assets.xcassets/AppIcon.appiconset/icon.png
+!FolderIcon/Assets.xcassets/AppIcon.appiconset/*.png
+
+# Generated code graph
+graphify-out/
 
 # JetBrains IDE
 .idea/

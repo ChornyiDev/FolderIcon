@@ -10,6 +10,13 @@ struct HistoryTabView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                if let error = state.history.lastError {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 4)
+                }
+
                 if state.history.entries.isEmpty {
                     emptyState
                 } else {
@@ -77,7 +84,9 @@ struct HistoryTabView: View {
                         ? "\(formatted(entry.date)) — Click to re-apply"
                         : formatted(entry.date))
 
-            Button(action: { state.history.delete(entry) }) {
+            Button(action: {
+                Task { await state.history.delete(entry) }
+            }) {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundColor(.gray)

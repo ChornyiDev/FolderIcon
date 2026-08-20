@@ -1,5 +1,4 @@
 import AppKit
-import Darwin
 import UniformTypeIdentifiers
 
 enum FolderProcessor {
@@ -303,64 +302,48 @@ enum FolderProcessor {
 
     // MARK: - Icon management
 
-    @discardableResult
-    static func applyIcon(_ image: NSImage, to folderURL: URL) -> Bool {
-        NSWorkspace.shared.setIcon(image, forFile: folderURL.path, options: [])
-    }
+    /// Applies the same rendered icon to every folder. The method accepts PNG
+    /// data so callers can safely move the work off the main actor.
+    nonisolated static func applyIcon(_ imageData: Data, to folderURLs: [URL]) -> [Bool] {
+        guard let image = NSImage(data: imageData) else {
+            return Array(repeating: false, count: folderURLs.count)
+        }
 
-    enum ResetError: LocalizedError {
-        case cannotReadFlags
-        case cannotClearFlag
-
-        var errorDescription: String? {
-            switch self {
-            case .cannotReadFlags:
-                return "Could not read the folder flags"
-            case .cannotClearFlag:
-                return "Could not clear the custom-icon flag"
+        return folderURLs.map { folderURL in
+            withSecurityScopedAccess(to: folderURL) {
+                NSWorkspace.shared.setIcon(image, forFile: folderURL.path, options: [])
             }
         }
     }
 
-    /// Restores the default folder icon by removing the custom icon
-    /// ("Icon\r") file and clearing the Finder custom-icon flag.
-    /// Throws if the flag cannot be read or cleared, so callers report the
-    /// failure instead of assuming the icon was restored.
-    static func resetIcon(for folderURL: URL) throws {
-        let iconPath = folderURL.path + "/Icon\r"
-        if FileManager.default.fileExists(atPath: iconPath) {
-            try FileManager.default.removeItem(atPath: iconPath)
-        }
-        try clearCustomIconFlag(for: folderURL)
-    }
+    enum ResetError: LocalizedError {
+        case cannotResetIcon
 
-    /// Clears the `kHasCustomIcon` (0x0400) Finder flag via getattrlist/setattrlist,
-    /// leaving all other flags untouched. No-ops when the flag is already
-    /// cleared; throws if the underlying syscalls fail.
-    private static func clearCustomIconFlag(for folderURL: URL) throws {
-        let path = folderURL.path
-
-        var query = attrlist()
-        query.bitmapcount = u_short(ATTR_BIT_MAP_COUNT)
-        query.commonattr = attrgroup_t(ATTR_CMN_FLAGS)
-
-        var buffer = FlagsAttribute()
-        guard getattrlist(path, &query, &buffer, MemoryLayout<FlagsAttribute>.size, 0) == 0 else {
-            throw ResetError.cannotReadFlags
-        }
-
-        let kHasCustomIcon: UInt32 = 0x0400
-        let newFlags = buffer.flags & ~kHasCustomIcon
-        guard newFlags != buffer.flags else { return }
-
-        var flags = newFlags
-        guard setattrlist(path, &query, &flags, MemoryLayout<UInt32>.size, 0) == 0 else {
-            throw ResetError.cannotClearFlag
+        var errorDescription: String? {
+            "Could not restore the default folder icon"
         }
     }
 
-    private struct FlagsAttribute {
-        var length: UInt32 = 0
-        var flags: UInt32 = 0
+    /// Uses the same system API as icon application, avoiding a partial reset
+    /// where the Icon file is deleted but Finder's custom-icon flag remains.
+    nonisolated static func resetIcon(for folderURL: URL) throws {
+        let didReset = withSecurityScopedAccess(to: folderURL) {
+            NSWorkspace.shared.setIcon(nil, forFile: folderURL.path, options: [])
+        }
+        guard didReset else {
+            throw ResetError.cannotResetIcon
+        }
+    }
+
+    nonisolated private static func withSecurityScopedAccess<T>(
+        to url: URL, operation: () -> T
+    ) -> T {
+        let didStart = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStart {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        return operation()
     }
 }
