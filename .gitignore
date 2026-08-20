@@ -22,3 +22,6 @@ build_output/
 # Assets
 *.appiconset/*.png
 !FolderIcon/Assets.xcassets/AppIcon.appiconset/icon.png
+
+# JetBrains IDE
+.idea/
