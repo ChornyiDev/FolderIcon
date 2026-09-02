@@ -161,6 +161,7 @@ struct ColorTabView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(2)
+                .focusable(false)
             }
         }
         .background(Color.gray.opacity(0.1))

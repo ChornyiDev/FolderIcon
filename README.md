@@ -2,7 +2,13 @@
 
 **FolderIcon** is a sleek, premium macOS utility designed to help you organize and personalize your workspace by customizing folder icons with ease. Whether you want to color-code your projects, add descriptive SF Symbols, or use your own logos, FolderIcon makes it simple and fast.
 
-![FolderIcon Preview](FolderIcon/Assets.xcassets/AppIcon.appiconset/icon_512@2x.png)
+## Preview
+
+| Gradient colors | SF Symbols |
+| --- | --- |
+| ![Gradient color controls](docs/images/color-gradient.jpg) | ![SF Symbols browser](docs/images/symbols.jpg) |
+| Icon styling | History |
+| ![Icon styling controls](docs/images/style.jpg) | ![Applied icon history](docs/images/history.jpg) |
 
 ## 🚀 Features
 
