@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish macOS app
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        run: echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build Release (ad-hoc signed)
+        run: |
+          set -euo pipefail
+          xcodebuild build \
+            -project FolderIcon.xcodeproj \
+            -scheme FolderIcon \
+            -configuration Release \
+            -derivedDataPath build_output \
+            MARKETING_VERSION="$APP_VERSION" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-"
+
+      - name: Verify code signature
+        run: |
+          set -euo pipefail
+          codesign --verify --verbose=2 "build_output/Build/Products/Release/FolderIcon.app"
+
+      - name: Package .zip
+        run: |
+          set -euo pipefail
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build_output/Build/Products/Release/FolderIcon.app" \
+            "FolderIcon-v${APP_VERSION}.zip"
+
+      - name: Package .dmg
+        run: |
+          set -euo pipefail
+          STAGING="$(mktemp -d)"
+          cp -R "build_output/Build/Products/Release/FolderIcon.app" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create \
+            -volname "FolderIcon" \
+            -srcfolder "$STAGING" \
+            -ov \
+            -format UDZO \
+            "FolderIcon-v${APP_VERSION}.dmg"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            FolderIcon-v${{ env.APP_VERSION }}.zip
+            FolderIcon-v${{ env.APP_VERSION }}.dmg
+          generate_release_notes: true

@@ -25,9 +25,35 @@
 - **Reset to Default**: Restore original folder icons at any time.
 - **Native Look & Feel**: A focused macOS-native interface built with SwiftUI and AppKit.
 
-## 🛠 Installation
+## ⬇️ Download
 
-### Option 1: Terminal (Recommended)
+Prebuilt versions are published automatically on the [**Releases**](https://github.com/ChornyiDev/FolderIcon/releases) page. Every release contains:
+
+- **`FolderIcon-vX.Y.Z.dmg`** — open it and drag FolderIcon into **Applications**.
+- **`FolderIcon-vX.Y.Z.zip`** — unzip and move FolderIcon into **Applications**.
+
+> [!IMPORTANT]
+> The app is built by GitHub Actions and signed **ad-hoc** — it is not signed with an Apple Developer ID and not notarized. macOS Gatekeeper will therefore warn you on the first launch. See the instructions below.
+
+### 🛡 Removing the quarantine (first launch)
+
+**Option A — Finder (no terminal):**
+1. Open **Applications**, right-click (or Control-click) on **FolderIcon** → **Open**.
+2. In the warning dialog click **Open** again. This is required only once — afterwards the app launches normally.
+
+**Option B — Terminal:**
+
+```bash
+xattr -dr com.apple.quarantine /Applications/FolderIcon.app
+```
+
+Tip: type `xattr -dr com.apple.quarantine ` (with a trailing space), then drag FolderIcon.app from Finder into the Terminal window and press Enter.
+
+**If macOS says “FolderIcon is damaged or missing necessary files”:** this usually means the archive was extracted incorrectly. Re-download the `.dmg`/`.zip`, open it with the built-in Archive Utility/DiskImage Mounter, and make sure the whole `FolderIcon.app` bundle ends up in `/Applications` — then remove the quarantine as shown above.
+
+## 🛠 Building from Source
+
+### Option 1: Terminal
 
 Build and install directly from the command line:
 
@@ -96,6 +122,20 @@ xcodebuild test \
 ```
 
 The tests cover the SF Symbols grid, emoji/text input limits, PNG/SVG image loading (including dropped SVG data), default and zero-opacity rendering, history pruning, and history state restoration.
+
+## 🔄 Releases (maintainers)
+
+Releases are fully automated with GitHub Actions:
+
+1. Make sure `MARKETING_VERSION` in the project matches the version you want to ship (the `v*` tag is authoritative — CI overrides the version with the tag number).
+2. Push a tag:
+   ```bash
+   git tag v1.0.1
+   git push origin v1.0.1
+   ```
+3. The **Release** workflow builds the app on a macOS runner, packages `.zip` + `.dmg`, and publishes a GitHub Release with auto-generated notes.
+
+Every push/PR to `main` is additionally built by the **CI** workflow, with the `.app` available as a downloadable artifact.
 
 ## 📄 License
 
